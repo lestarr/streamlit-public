@@ -361,6 +361,28 @@ def delete_exercise(name, username):
 def manage_exercises():
     st.subheader("Exercise Management")
     
+    # Add import section at the top
+    st.write("### Import Data")
+    uploaded_file = st.file_uploader("Import workouts from CSV", type=['csv'])
+    if uploaded_file is not None:
+        if st.button("Import Data"):
+            success, message = import_from_csv(uploaded_file, st.session_state.current_user)
+            if success:
+                st.success(message)
+                st.rerun()
+            else:
+                st.error(message)
+        
+        st.info("CSV must contain columns: date, exercise, weight, reps")
+        st.write("Example format:")
+        st.code("""
+date,exercise,weight,reps
+2024-02-15,bench press,60,8
+2024-02-15,squat,80,6
+        """)
+    
+    st.divider()  # Add visual separation
+    
     # Sort muscle groups alphabetically
     MUSCLE_GROUPS = sorted(["Arms", "Back", "Chest", "Core", "Full Body", "Legs", "Shoulders", "Other"])
     
