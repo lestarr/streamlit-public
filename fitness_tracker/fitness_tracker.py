@@ -5,6 +5,7 @@ import os
 import json
 import shutil
 import random
+import time
 
 # Constants
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -111,35 +112,27 @@ def save_user(name):
 
 def delete_user(name):
     """Archive a user's data and remove them from active users"""
-    # Get user's protection code
     users = load_users()
     user = next((u for u in users if u['name'] == name), None)
     if not user:
         return False, "User not found"
     
-    # Ask for protection code
-    protection_code = st.text_input("Enter protection code to delete user:", type="password")
-    if not protection_code:
-        return False, "Please enter the protection code"
-    
-    if protection_code != user.get('protection_code'):
-        return False, "Incorrect protection code"
-    
     # Create backup before deletion
     create_backup()
     
-    # Proceed with deletion
-    users = [u for u in users if u['name'] != name]
-    with open(USERS_FILE, 'w') as f:
-        json.dump({"users": users}, f)
-    
+    # Archive user directory
     user_dir = get_user_data_path(name)
     if os.path.exists(user_dir):
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         archive_user_dir = os.path.join(ARCHIVE_DIR, f"{name}_{timestamp}")
         shutil.move(user_dir, archive_user_dir)
     
-    return True, f"Deleted user: {name}"
+    # Remove user from users list
+    users = [u for u in users if u['name'] != name]
+    with open(USERS_FILE, 'w') as f:
+        json.dump({"users": users}, f)
+    
+    return True, f"User {name} deleted and archived"
 
 # Update data loading functions to use user-specific files
 def load_exercises(username):
@@ -806,16 +799,17 @@ def restore_from_backup_file(backup_content):
 def check_password():
     """Returns `True` if the user had the correct password."""
     if not st.session_state.get("password_correct", False):
-        # First run or incorrect password
         password = st.sidebar.text_input("Enter password", type="password")
         if password:
-            # Get password from secrets or use default for development
-            correct_password = st.secrets.get("password", "admin")  # Default password for development
-            if password == correct_password:
-                st.session_state["password_correct"] = True
-                st.rerun()
-            else:
-                st.sidebar.error("Incorrect password")
+            try:
+                correct_password = st.secrets["password"]  # Will raise error if not set
+                if password == correct_password:
+                    st.session_state["password_correct"] = True
+                    st.rerun()
+                else:
+                    st.sidebar.error("Incorrect password")
+            except KeyError:
+                st.error("No password configured. Please set password in Streamlit secrets.")
         return False
     return True
 
@@ -868,14 +862,12 @@ def main():
                 )
                 st.session_state.current_user = selected_user
                 
-                # Modified delete user button and handling
+                # Simple delete button
                 if st.button("🗑️ Delete User", type="secondary", help="Delete selected user"):
                     success, message = delete_user(selected_user)
                     if success:
                         st.success(message)
                         st.rerun()
-                    else:
-                        st.error(message)
             else:
                 st.warning("Please add a user first")
                 return
@@ -894,8 +886,6 @@ def main():
                             if success:
                                 st.success(message)
                                 st.rerun()
-                            else:
-                                st.error(message)
             else:
                 st.info("No archived users found")
         
