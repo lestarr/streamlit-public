@@ -102,3 +102,8 @@ target/
 
 # Data files
 data/*.json
+# personal workout data stays local
+fitness_tracker/data/*
+!fitness_tracker/data/.gitkeep
+!fitness_tracker/data/exercises.json
+fitness_tracker/import_data_*.csv
